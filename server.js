@@ -10,7 +10,7 @@ const config = require('./config');
 const connectDB = require('./models/db')
 
 
-const Required_Env_Variables = ['PORT', 'APP_ENV'];
+const Required_Env_Variables = ['DB_URI', 'APP_ENV'];
 
 for (const key of Required_Env_Variables) {
   if (!process.env[key]) {
@@ -18,7 +18,7 @@ for (const key of Required_Env_Variables) {
   }
 }
 
-const PORT = Number(process.env.PORT)
+const PORT = Number(process.env.PORT) || 3000;
 if (Number.isNaN(PORT)) {
   throw new Error('PORT must be a number')
 }
@@ -39,7 +39,7 @@ app.get("/crash", async (req, res) => {
 
 const startServer = async () => {
   await connectDB();
-  app.listen(process.env.PORT, () => {
+  app.listen(PORT, () => {
     console.log("Server started:")
     console.log('Environment:', process.env.APP_ENV);
     console.log('PORT:', PORT)
