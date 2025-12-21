@@ -1,0 +1,21 @@
+TEST: Invalid JSON
+RESULT: 
+Request returned 400 Bad Request.
+Server did not crash.
+Global error handler caught the JSON parsing error.
+LOG:
+tructured JSON log with timestamp, level, path, method, and status.
+Error message was clear but did not indicate the error source (parser vs controller).
+No request body or stack trace in production logs, making deep debugging harder.
+
+TEST: 
+RESULT:
+LOG:
+
+TEST: 
+RESULT:
+LOG:
+
+TEST: 
+RESULT:
+LOG:
