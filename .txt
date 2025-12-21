@@ -1,3 +1,4 @@
+SEND INCOMPLETE JSON
 TEST: Invalid JSON
 RESULT: 
 Request returned 400 Bad Request.
@@ -8,14 +9,50 @@ tructured JSON log with timestamp, level, path, method, and status.
 Error message was clear but did not indicate the error source (parser vs controller).
 No request body or stack trace in production logs, making deep debugging harder.
 
-TEST: 
+SEND HUGE PAYLOAD
+TEST: Invalid Payload
 RESULT:
+Request returned 413 Payload too large.
+Server did not crash.
+Global error handler caught the server limit error.
 LOG:
+Structured JSON log with timestamp, level, path, method and status.
+Error message was clear but did not indicate the source.
+No requesting body or stack trace in the production logs.
 
-TEST: 
-RESULT:
+HIT ENDPOINTS RAPIDLY
+TEST: Invalid request
+RESULT: 
+Request returned 413 request entity too large.
+Server did not crash.
+GLobal error hanlder caught the server request limit.
 LOG:
+Structured JSON log with timestamp, level, path, method and status.
+Error message was clear but did not indicate the source.
+No requesting body or stack trace in the production logs.
 
-TEST: 
+Kill DB in mid-request
+TEST: DB authentication failure during startup
 RESULT:
+Server crashed.
+Server never listen to the port.
+No endpoints were available.
 LOG:
+Due to server crash no logs were available.
+
+CALL “PROTECTED” ROUTES WITH NO AUTH
+TEST: Call “protected” routes
+RESULT:
+Request succeded even with fake authentication token.
+Server did not crashed.
+There were no “PROTECTED” routes that's why Authorization header had no meaning even though putted on.
+LOG:
+Structured JSON log with timestamp, level, path, method and status.
+
+FORCE A CRASH (programmer error)
+TEST: Force a crash via /crash endpoint
+RESULT:
+The request triggered an uncaught exception: Error: boom.
+Server process terminated immediately due to the exception.
+LOG:
+Logs showed the stack trace of the error before the crash.

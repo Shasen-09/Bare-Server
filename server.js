@@ -9,7 +9,6 @@ const errorHandler = require('./middlewares/errorHandler');
 const config = require('./config');
 const connectDB = require('./models/db')
 
-
 const Required_Env_Variables = ['DB_URI', 'APP_ENV'];
 
 for (const key of Required_Env_Variables) {
@@ -27,6 +26,22 @@ const app = express();
 app.use(express.json({ limit: "1mb" }));
 app.use(requestLogger)
 
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception', {
+    message: err.message,
+    stack: err.stack
+  });
+  process.exit(1);
+})
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Promise Rejection', {
+    reason,
+  })
+  process.exit(1);
+})
+
+
 app.use('/health', startRoute)
 app.use('/user', userRoute)
 app.use('/item', itemRoute)
@@ -37,7 +52,7 @@ app.get("/crash", async (req, res) => {
   throw new Error("boom");
 });
 
-const startServer = async () => {
+async function startServer() {
   await connectDB();
   app.listen(PORT, () => {
     console.log("Server started:")
