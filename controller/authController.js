@@ -48,4 +48,31 @@ const login = async (req, res, next) => {
 
 }
 
-module.exports = login;
+const refresh = async (req, res, next) => {
+
+  const { token } = req.body;
+
+  if (!token) return res.status(400).json({ error: "Invalid Token" })
+  if (!refreshTokens.includes(token)) return res.json(404).json({ error: "Invalid Refresh Token" })
+
+  try {
+    const payload = jwt.verify(token, JWT_REFRESH_SECRET);
+
+    refreshTokens = refreshTokens.filter(t => t !== token)
+
+    const newAccessToken = jwt.sign({ id: payload.id }, JWT_ACCESS_SECRET, { expiresIn: '7m' })
+    const newRefreshToken = jwt.sign({ id: payload.id }, JWT_REFRESH_SECRET, { expiresIn: '15m' })
+    refreshTokens.push(newRefreshToken)
+    res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken })
+
+
+
+  } catch (err) {
+    next(err)
+  }
+
+
+
+}
+
+module.exports = { login, refresh };
