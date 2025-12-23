@@ -3,12 +3,12 @@ const bcrypt = require('bcryptjs')
 const users = require('../models/userModel')
 
 const JSON_WEBTOKEN = process.env.JSON_WEBTOKEN || "secret";
-const JSON_REFRESHED_WEBTOKEN = process.env.JSON_WEBTOKEN || "mysecret";
+const JSON_REFRESHED_TOKEN = process.env.JSON_WEBTOKEN || "mysecret";
 
-let refereshtoken = [];
+let refreshTokens = [];
 
 const generateToken = (user) => {
-  jwt.sign(
+  return jwt.sign(
     {
       id: user._id, role: user.role
     }, JSON_WEBTOKEN,
@@ -19,9 +19,9 @@ const generateToken = (user) => {
 }
 
 const generateRefreshToken = (user) => {
-  jwt.sign(
+  return jwt.sign(
     { id: user._id },
-    JSON_REFRESHED_WEBTOKEN,
+    JSON_REFRESHED_TOKEN,
     { expiresIn: '15m' }
   )
 }
@@ -37,8 +37,9 @@ const login = async (req, res, next) => {
 
     const accessToken = generateToken(user);
     const refreshToken = generateRefreshToken(user);
-
+    refreshTokens.push(refreshToken);
     res.json({ accessToken, refreshToken })
+
   } catch (err) {
     next(err);
   }
