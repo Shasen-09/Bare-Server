@@ -60,7 +60,7 @@ const refresh = async (req, res, next) => {
 
     refreshTokens = refreshTokens.filter(t => t !== token)
 
-    const newAccessToken = jwt.sign({ id: payload.id }, JWT_ACCESS_SECRET, { expiresIn: '7m' })
+    const newAccessToken = jwt.sign({ id: payload.id, role: payload.role }, JWT_ACCESS_SECRET, { expiresIn: '7m' })
     const newRefreshToken = jwt.sign({ id: payload.id }, JWT_REFRESH_SECRET, { expiresIn: '15m' })
     refreshTokens.push(newRefreshToken)
     res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken })
