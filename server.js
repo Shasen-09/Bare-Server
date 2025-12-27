@@ -7,7 +7,8 @@ const itemRoute = require('./routes/itemRoute');
 const requestLogger = require('./middlewares/loggerHandler');
 const errorHandler = require('./middlewares/errorHandler');
 const config = require('./config');
-const connectDB = require('./models/db')
+const connectDB = require('./models/db');
+const { apiLimiter } = require('./middlewares/rateLimiter');
 
 const Required_Env_Variables = ['DB_URI', 'APP_ENV'];
 
@@ -25,6 +26,7 @@ if (Number.isNaN(PORT)) {
 const app = express();
 app.use(express.json({ limit: "1mb" }));
 app.use(requestLogger)
+app.use(apiLimiter);
 
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception', {
@@ -40,6 +42,8 @@ process.on('unhandledRejection', (reason) => {
   })
   process.exit(1);
 })
+
+
 
 
 app.use('/health', startRoute)

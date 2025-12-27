@@ -1,12 +1,14 @@
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
 const users = require('../models/userModel')
+const crypto = require('crypto')
+const RefreshedToken = require('../models/refreshToken')
+const { ObjectId } = require('mongodb');
 
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 
 
-let refreshTokens = [];
 
 const generateToken = (user) => {
   return jwt.sign(
@@ -19,12 +21,13 @@ const generateToken = (user) => {
   )
 }
 
-const generateRefreshToken = (user) => {
-  return jwt.sign(
-    { id: user._id },
-    JWT_REFRESH_SECRET,
-    { expiresIn: '15m' }
-  )
+const generateRefreshToken = async (userId) => {
+  const token = crypto.randomBytes(64).toString('hex');
+  const tokenHash = await bcrypt.hash(token, 10);
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000)
+
+  await RefreshedToken.create({ userId, tokenHash, revoked: false, expiresAt })
+  return token;
 }
 const login = async (req, res, next) => {
   try {
@@ -37,8 +40,8 @@ const login = async (req, res, next) => {
     if (!isPasswordValid) return res.status(400).json({ error: "Invalid Password" })
 
     const accessToken = generateToken(user);
-    const refreshToken = generateRefreshToken(user);
-    refreshTokens.push(refreshToken);
+    const refreshToken = await generateRefreshToken(user._id);
+
     res.json({ accessToken, refreshToken })
 
   } catch (err) {
@@ -48,31 +51,60 @@ const login = async (req, res, next) => {
 
 }
 
-const refresh = async (req, res, next) => {
-
-  const { token } = req.body;
-
-  if (!token) return res.status(400).json({ error: "Invalid Token" })
-  if (!refreshTokens.includes(token)) return res.json(404).json({ error: "Invalid Refresh Token" })
-
+const logout = async (req, res, next) => {
   try {
-    const payload = jwt.verify(token, JWT_REFRESH_SECRET);
+    const { refreshToken } = req.body;
+    if (!refreshToken) return res.status(400).json({ error: "Token invalid" })
+    const deleteToken = await RefreshedToken.find({ revoked: false })
 
-    refreshTokens = refreshTokens.filter(t => t !== token)
+    for (const t of deleteToken) {
+      const match = await bcrypt.compare(refreshToken.trim(), t.tokenHash)
+      if (match) {
+        await RefreshedToken.deleteOne({ _id: new ObjectId(t._id) });
+        break;
+      }
 
-    const newAccessToken = jwt.sign({ id: payload.id, role: payload.role }, JWT_ACCESS_SECRET, { expiresIn: '7m' })
-    const newRefreshToken = jwt.sign({ id: payload.id }, JWT_REFRESH_SECRET, { expiresIn: '15m' })
-    refreshTokens.push(newRefreshToken)
-    res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken })
-
-
-
+    }
+    res.json({ message: "Logout Successfull" })
   } catch (err) {
-    next(err)
+    next(err);
   }
-
-
-
 }
 
-module.exports = { login, refresh };
+const refresh = async (req, res, next) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) return res.status(400).json({ error: "Invalid Token" });
+
+    const tokens = await RefreshedToken.find({ revoked: false, expiresAt: { $gt: new Date() } })
+    let tokenRecord = null;
+
+    for (const t of tokens) {
+      if (await bcrypt.compare(token, t.tokenHash)) {
+        tokenRecord = t;
+        break;
+      }
+    }
+    if (!tokenRecord) return res.status(401).json({ error: "Invalid or expired refresh token" });
+
+    tokenRecord.revoked = true;
+    await tokenRecord.save();
+
+
+    const user = await users.findById(tokenRecord.userId)
+    if (!user) {
+      return res.status(401).json({ error: "User not found" });
+    }
+    const newAccessToken = generateToken(user);
+    const newRefreshToken = await generateRefreshToken(user._id);
+
+    res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
+
+  } catch (err) {
+    next(err);
+
+  }
+}
+
+module.exports = { login, refresh, logout };
